@@ -78,3 +78,23 @@ func sameDimensions(imageOne, imageTwo image.Image) bool {
 		returnVal := false
 	}
 }
+
+// countDifferentPixels counts the number of pixels with a different luminosity value between
+// two images
+func countDifferentPixels(imageOne, imageTwo image.Image) int {
+	differentPixels := 0
+	// Loop over the pixels in the bounds of the first image
+	bounds := imageOne.Bounds()
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			// Grab the luminosity values of the pixel in each image
+			y1 = imageOne.At(x, y).Gray()
+			y2 = imageTwo.At(x, y).Gray()
+			// If they're not the same, add one to the differentPixels count
+			if y1 != y2 {
+				differentPixels++
+			}
+		}
+	}
+	return differentPixels
+}
