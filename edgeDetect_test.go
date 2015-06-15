@@ -69,3 +69,12 @@ func TestCannyEdgeDetection(t *testing.T) {
 		}()
 	}
 }
+
+// sameDimensions returns true if the two given images have the same dimensions, false otherwise
+func sameDimensions(imageOne, imageTwo image.Image) bool {
+	if imageOne.Bounds() == imageTwo.Bounds() {
+		returnVal := true
+	} else {
+		returnVal := false
+	}
+}
