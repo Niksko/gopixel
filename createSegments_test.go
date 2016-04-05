@@ -11,9 +11,9 @@ var createSegmentTests = []struct {
     angle float64
     numberOfPixels int
 }{
-//    {45., 16},
-//    {0., 16},
-//    {90., 16},
+    {45., 16},
+    {0., 16},
+    {90., 16},
     {62., 16},
     {17., 16},
 }
