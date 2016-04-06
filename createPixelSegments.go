@@ -1,7 +1,6 @@
 package gopixel
 
 import "image"
-import "image/color"
 import "math"
 
 /*
@@ -12,96 +11,69 @@ func createSegments(sourceImage image.Image, segmentAngle float64) []PixelSegmen
     var returnSlice []PixelSegment
 
     // Convert our segment angle into a gradient for our lines
-    lineGradient := math.Tan(segmentAngle)
+    var lineGradient float64
+    lineGradient = math.Tan(segmentAngle)
 
-    // We will handle vertical and horizontal lines differently, because they're easy
-    if !math.IsNaN(lineGradient) && lineGradient != 0 {
+    // If our line gradient is larger than that for 90 degrees
+    if lineGradient == math.Tan(90. / 180. * math.Pi) {
+        lineGradient = math.NaN()
+    }
 
-        var startX, startY, endX, endY int
+    flipCoords := false
 
-        // For positive gradients, our endpoint is at (0, 0) and our start point is on the line y=height
-        if lineGradient < 0 {
-            endX = 0
-            endY = 0
-            // Compute start x and y points. Note that the start x needs manual rounding with the +0.5 and int cast
-            startY = sourceImage.Bounds().Max.Y - 1
-            startX = int(float64(startY) / lineGradient - 0.5)
-        } else if lineGradient > 0 {
-            // For negative gradients, the end point is at (0, height) and the start is at y=0
-            endY = sourceImage.Bounds().Max.Y - 1
-            endX = 0
-            startX = int(-1 * float64(endY) / lineGradient - 0.5)
-            startY = 0
+    if math.Abs(lineGradient) < 1 && lineGradient != 0 {
+        flipCoords = true
+        lineGradient = 1. / lineGradient
+    }
+
+    // Pull the bounds of the source image into a local variable for convenience
+    bounds := sourceImage.Bounds()
+
+    // We will handle vertical lines differently
+    if !math.IsNaN(lineGradient)  && lineGradient != 0 {
+        // We store our segments in a map, where the keys are the values that are constant over each line
+        segmentMap := make(map[float64]PixelSegment)
+
+        // We iterate over each pixel in the image
+        for x := 0; x < bounds.Max.X; x++ {
+            for y := 0; y < bounds.Max.Y; y++ {
+                // Compute the c value for the current pixel
+                cValue := float64(y) - lineGradient * float64(x)
+                // Round this to the nearest multiple of lineGradient
+                roundedC := Round(cValue, lineGradient)
+                // Look up this value in the segmentMap
+                elem := segmentMap[roundedC]
+                // Add the current point to this segment
+                if !flipCoords {
+                    elem = append(elem, image.Point{x, y})
+                } else {
+                    elem = append(elem, image.Point{y, x})
+                }
+                // Store this back in the map
+                segmentMap[roundedC] = elem
+            }
         }
 
-        // We need to loop until our start point reaches the correct value
-        for ;startX < sourceImage.Bounds().Max.X; {
-            var currentSegment PixelSegment
-            currentSegment.pixelSlice = []color.Color{}
-
-            // We need to set the startPixel of the PixelSegment. To do this we set a flag which will be removed upon
-            // The first pixel in bounds
-            firstPixel := true
-
-            // Use Bresenham's line algorithm to generate pixels between start and end points
-            deltaX := float64(endX - startX)
-            deltaY := float64(endY - startY)
-            err := 0.
-            deltaErr := math.Abs(deltaY / deltaX)
-            yVar := startY
-            for xVar := startX; xVar <= endX; xVar++ {
-               err += deltaErr
-               for ;err >= 0.5; {
-                   // If the pixel is within the image bounds
-                   if inBounds(sourceImage, xVar, yVar) {
-                       // Write the pixel to the segment
-                       currentSegment.pixelSlice = append(currentSegment.pixelSlice, sourceImage.At(xVar, yVar))
-                       // If this is the first inbounds pixel, write the point to the start point and remove the flag
-                       if firstPixel {
-                           firstPixel = false
-                           currentSegment.startPoint = image.Point{xVar, yVar}
-                       }
-                   }
-                   // Adjust y based on sign of y1 - y0
-                   if math.Signbit(float64(endY - startY)) {
-                       // Negative sign
-                       yVar -= 1
-                   } else {
-                       // Positive sign
-                       yVar += 1
-                   }
-                   // Adjust the error
-                   err -= 1
-               }
-            }
-
-            // Add the segment to the returnSlice, but only if it isn't empty
-            if len(currentSegment.pixelSlice) > 0 {
-                returnSlice = append(returnSlice, currentSegment)
-            }
-
-            // Increment the x start and end points. This should ensure that we cover the entire image
-            startX += 1
-            endX += 1
+        // Now iterate over the map, pulling out the values into the returnSlice
+        for _, value := range segmentMap {
+            returnSlice = append(returnSlice, value)
         }
 
-    } else if lineGradient == 0 {
-        // Horizontal lines
-        for y := 0; y < sourceImage.Bounds().Max.Y; y++ {
+    } else if math.IsNaN(lineGradient) {
+        // lineGradient is NaN, vertical lines
+        for x := 0; x < bounds.Max.X; x++ {
             var currentSegment PixelSegment
-            currentSegment.startPoint = image.Point{0, y}
-            for x := 0; x < sourceImage.Bounds().Max.X; x++ {
-                currentSegment.pixelSlice = append(currentSegment.pixelSlice, sourceImage.At(x, y))
+            for y := 0; y < bounds.Max.Y; y++ {
+                currentSegment = append(currentSegment, image.Point{x, y})
             }
             returnSlice = append(returnSlice, currentSegment)
         }
     } else {
-        // lineGradient is NaN, vertical lines
-        for x := 0; x < sourceImage.Bounds().Max.X; x++ {
+        // lineGradient is zero
+        for y := 0; y < bounds.Max.Y; y++ {
             var currentSegment PixelSegment
-            currentSegment.startPoint = image.Point{x, 0}
-            for y := 0; y < sourceImage.Bounds().Max.Y; y++ {
-                currentSegment.pixelSlice = append(currentSegment.pixelSlice, sourceImage.At(x, y))
+            for x := 0; x < bounds.Max.X; x++ {
+                currentSegment = append(currentSegment, image.Point{x, y})
             }
             returnSlice = append(returnSlice, currentSegment)
         }
@@ -111,17 +83,31 @@ func createSegments(sourceImage image.Image, segmentAngle float64) []PixelSegmen
 }
 
 
-// Define a method which computes whether a given x and y coordinate is within the bounds of an image
-func inBounds(im image.Image, x, y int) bool {
-    inBounds := true
-    inBounds = inBounds && x >= im.Bounds().Min.X
-    inBounds = inBounds && x < im.Bounds().Max.X
-    inBounds = inBounds && y >= im.Bounds().Min.Y
-    inBounds = inBounds && y < im.Bounds().Max.Y
-    return inBounds
-}
-
 func createSegmentsWithEdgeMap(sourceImage, edgeMap image.Image, segmentAngle float64) []PixelSegment {
     var returnSlice []PixelSegment
     return returnSlice
+}
+
+// This function takes f, and rounds it to the nearest multiple of m
+func Round(f float64, m float64) float64 {
+    var returnVal float64
+    // Divide by m
+    div := f / m
+    // Separate the whole and fractional parts
+    whole, frac := math.Modf(div)
+    if math.Abs(frac) <= 0.5 {
+        // If the fractional part is in the range (-0.5, 0.5] we round towards the whole
+        returnVal = whole * m
+    } else {
+        // If the fractional part is outside this range, we round away from the whole
+        if math.Signbit(whole) {
+            // Negative value
+            returnVal = (whole - 1) * m
+        } else {
+            // Positive value
+            returnVal = (whole + 1) * m
+        }
+    }
+
+    return returnVal
 }
