@@ -17,7 +17,10 @@ var createSegmentTests = []struct {
     {90., 16},
     {math.Atan(2) * 180. / math.Pi, 16},
     {math.Atan(1./2.) * 180. / math.Pi, 16},
-    {math.Atan(1./3.) * 180. / math.Pi, 16},
+    {180., 16},
+    {120., 16},
+    {-90., 16},
+    {-45, 16},
 }
 
 func Test4x4(t *testing.T) {

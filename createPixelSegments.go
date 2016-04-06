@@ -10,12 +10,20 @@ import "math"
 func createSegments(sourceImage image.Image, segmentAngle float64) []PixelSegment {
     var returnSlice []PixelSegment
 
+    // Wrap the angle into the range (-pi/2, pi/2]
+    for ;segmentAngle <= -math.Pi/2 || segmentAngle > math.Pi/2; {
+        if segmentAngle > 0 {
+            segmentAngle -= math.Pi
+        } else {
+            segmentAngle += math.Pi
+        }
+    }
+
     // Convert our segment angle into a gradient for our lines
-    var lineGradient float64
-    lineGradient = math.Tan(segmentAngle)
+    lineGradient := math.Tan(segmentAngle)
 
     // If our line gradient is larger than that for 90 degrees
-    if lineGradient == math.Tan(90. / 180. * math.Pi) {
+    if lineGradient == math.Tan(math.Pi / 2) {
         lineGradient = math.NaN()
     }
 
