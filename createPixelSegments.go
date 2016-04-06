@@ -1,7 +1,6 @@
 package gopixel
 
 import "image"
-import "image/color"
 import "math"
 import "github.com/disintegration/gift"
 
@@ -165,11 +164,8 @@ func findConnectedComponents(im image.Image) map[image.Point]int {
     for x := 0; x < im.Bounds().Max.X; x++ {
         for y := 0; y < im.Bounds().Max.Y; y++ {
             // Check to see if the pixel is black
-            var pixel struct {
-                R, G, B uint32
-            }
-            pixel.R, pixel.G, pixel.B, _ = im.At(x, y).RGBA()
-            if pixel.R + pixel.G + pixel.B == 0 {
+            R, G, B, A := im.At(x, y).RGBA()
+            if R + G + B == 0 {
 
             }
         }
