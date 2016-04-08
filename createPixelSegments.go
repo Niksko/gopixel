@@ -158,19 +158,97 @@ func wrapValue(value, lower, upper float64) float64 {
     return value
 }
 
+// This function produces a map from points to integers, where the integers represent contiguous regions of the image
+// The 'edges' or 'background' of the image are marked as -1 region
 func findConnectedComponents(im image.Image) map[image.Point]int {
     componentMap := make(map[image.Point]int)
+    // Count the regions
+    regionCounter := 0
+    // Need to record which regions are equivalent. Mark this in a map from regions to slices of equivalent regions
+    equivalenceMap := make(map[int]int)
     // To find connected components, we iterate over the image, pixel by pixel
     for x := 0; x < im.Bounds().Max.X; x++ {
         for y := 0; y < im.Bounds().Max.Y; y++ {
             // Check to see if the pixel is black
             R, G, B, A := im.At(x, y).RGBA()
             if R + G + B == 0 {
+                northEastRegion := checkRegion(x + 1, y - 1, im, componentMap)
+                northRegion := checkRegion(x, y - 1, im, componentMap)
+                northWestRegion := checkRegion(x - 1, y - 1, im, componentMap)
+                westRegion := checkRegion(x - 1, y, im, componentMap)
+                if northEastRegion != -1 {
+                    componentMap[image.Point{x, y}] = northEastRegion
+                }
+                if northRegion != -1 {
+                    // Check the region of the current pixel
+                    currentRegion := checkRegion(x, y, im, componentMap)
+                    // Add an entry in the equivalence map between the northRegion and the current region
+                    equivalenceMap[currentRegion] = Min(equivalenceMap[currentRegion], northRegion)
+                    equivalenceMap[northRegion] = Min(equivalenceMap[northRegion], currentRegion)
+                    componentMap[image.Point{x, y}] = northRegion
+                }
+                if northWestRegion != -1 {
+                    // Check the region of the current pixel
+                    currentRegion := checkRegion(x, y, im, componentMap)
+                    // Add an entry in the equivalence map between the northRegion and the current region
+                    equivalenceMap[currentRegion] = Min(equivalenceMap[currentRegion], northRegion)
+                    equivalenceMap[northRegion] = Min(equivalenceMap[northRegion], currentRegion)
+                    componentMap[image.Point{x, y}] = northWestRegion
 
+                }
+                if westRegion != -1 {
+                    // Check the region of the current pixel
+                    currentRegion := checkRegion(x, y, im, componentMap)
+                    // Add an entry in the equivalence map between the northRegion and the current region
+                    equivalenceMap[currentRegion] = Min(equivalenceMap[currentRegion], northRegion)
+                    equivalenceMap[northRegion] = Min(equivalenceMap[northRegion], currentRegion)
+                    componentMap[image.Point{x, y}] = westRegion
+                }
+                // If none of these have set the current region
+                if checkRegion(x, y, im, componentMap) == 0 {
+                    // Set the region to a new region
+                    componentMap[image.Point{x, y}] = regionCounter
+                    // Increment the region counter
+                    regionCounter++
+                }
+            } else {
+                // Mark the region is background with a -1
+                componentMap[image.Point{x,y}] = -1
             }
         }
     }
+
+    // Now we perform a final pass to merge equivalent components
+    for x := 0; x < im.Bounds().Max.X; x++ {
+        for y := 0; y < im.Bounds().Max.Y; y++ {
+            region := componentMap[image.Point{x, y}]
+            if region != -1 {
+                // This should give us the lowest equivalent region
+                region = equivalenceMap[region]
+                // Put it back into the component map
+                componentMap[image.Point{x, y}] = region
+            }
+        }
+    }
+
     return componentMap
+}
+
+// Convenience function that takes ints, passes them as floats to math.Min, then returns the resulting int
+func Min(x, y int) int {
+    return int(math.Min(float64(x), float64(y)))
+}
+
+func checkRegion(x, y int, im image.Image, componentMap map[image.Point]int) int {
+    // Check to see if the pixel is in bounds
+    var region int
+    bounds := im.Bounds()
+    if x < 0 || y < 0 || x >= bounds.Max.X || y >= bounds.Max.Y {
+        region = -1
+    } else {
+        region = componentMap[image.Point{x, y}]
+    }
+    return region
 }
 
 func divideFromComponentMap(nonEdgeMappedSegments []PixelSegment, pointComponentMap map[image.Point]int) []PixelSegment {
