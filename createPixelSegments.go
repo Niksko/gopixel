@@ -170,7 +170,7 @@ func findConnectedComponents(im image.Image) map[image.Point]int {
     for x := 0; x < im.Bounds().Max.X; x++ {
         for y := 0; y < im.Bounds().Max.Y; y++ {
             // Check to see if the pixel is black
-            R, G, B, A := im.At(x, y).RGBA()
+            R, G, B, _ := im.At(x, y).RGBA()
             if R + G + B == 0 {
                 northEastRegion := checkRegion(x + 1, y - 1, im, componentMap)
                 northRegion := checkRegion(x, y - 1, im, componentMap)
