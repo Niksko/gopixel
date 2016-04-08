@@ -3,6 +3,7 @@ package gopixel
 import "image"
 import "math"
 import "github.com/disintegration/gift"
+import "sort"
 
 /*
  * This function takes an image and a segment angle, and creates PixelSegments out of that image. This involves
@@ -93,6 +94,37 @@ func createSegmentsWithEdgeMap(sourceImage, edgeMap image.Image, segmentAngle fl
     // Call the regular function that creates segments with no edge map
     nonEdgeMappedSegments := createSegments(sourceImage, segmentAngle)
 
+    // Sort the points in these segments based on the segment angle
+    // Wrap the segment angle into the range (-pi, pi]
+    segmentAngle = wrapValue(segmentAngle, -math.Pi, math.Pi)
+
+    // Closures that order points
+    xAscending := func(c1, c2 *image.Point) bool {
+        return c1.X < c2.X
+    }
+    xDescending := func(c1, c2 *image.Point) bool {
+        return c1.X > c2.X
+    }
+    yAscending := func(c1, c2 *image.Point) bool {
+        return c1.Y < c2.Y
+    }
+    yDescending := func(c1, c2 *image.Point) bool {
+        return c1.Y > c2.Y
+    }
+
+    // Perform the sort
+    for _, segment := range nonEdgeMappedSegments {
+        if segmentAngle >= math.Pi/2 {
+            OrderedBy(xDescending, yDescending).Sort(segment)
+        } else if segmentAngle >= 0 {
+            OrderedBy(xAscending, yDescending).Sort(segment)
+        } else if segmentAngle >= -math.Pi/2 {
+            OrderedBy(xAscending, yAscending).Sort(segment)
+        } else {
+            OrderedBy(xDescending, yAscending).Sort(segment)
+        }
+    }
+
     // Use gift to create an edge map of the source image
     convolutionKernel := []float32{
         -1, -1, -1,
@@ -158,54 +190,78 @@ func wrapValue(value, lower, upper float64) float64 {
     return value
 }
 
+func updateEquivalenceMap(eqMap map[int]int, region1, region2 int) {
+    // Retrieve the current value from the map
+    current1, ok := eqMap[region1]
+    // If there currently is a value
+    if ok {
+        // The new value is the minimum of the old and the region 2 value
+        eqMap[region1] = Min(current1, region2)
+    } else {
+        // Otherwise, the new value is just the region 2 value
+        eqMap[region1] = region2
+    }
+
+    // Do the same for the other region
+    current2, ok := eqMap[region2]
+    if ok {
+        eqMap[region2] = Min(current2, region1)
+    } else {
+        eqMap[region2] = region1
+    }
+}
+
 // This function produces a map from points to integers, where the integers represent contiguous regions of the image
 // The 'edges' or 'background' of the image are marked as -1 region
 func findConnectedComponents(im image.Image) map[image.Point]int {
     componentMap := make(map[image.Point]int)
     // Count the regions
-    regionCounter := 0
+    regionCounter := 1
     // Need to record which regions are equivalent. Mark this in a map from regions to slices of equivalent regions
     equivalenceMap := make(map[int]int)
     // To find connected components, we iterate over the image, pixel by pixel
-    for x := 0; x < im.Bounds().Max.X; x++ {
-        for y := 0; y < im.Bounds().Max.Y; y++ {
+    for y := 0; y < im.Bounds().Max.Y; y++ {
+        for x := 0; x < im.Bounds().Max.X; x++ {
             // Check to see if the pixel is black
             R, G, B, _ := im.At(x, y).RGBA()
             if R + G + B == 0 {
-                northEastRegion := checkRegion(x + 1, y - 1, im, componentMap)
-                northRegion := checkRegion(x, y - 1, im, componentMap)
-                northWestRegion := checkRegion(x - 1, y - 1, im, componentMap)
-                westRegion := checkRegion(x - 1, y, im, componentMap)
+                northEastRegion := checkRegion(x + 1, y - 1, componentMap)
+                northRegion := checkRegion(x, y - 1, componentMap)
+                northWestRegion := checkRegion(x - 1, y - 1, componentMap)
+                westRegion := checkRegion(x - 1, y, componentMap)
                 if northEastRegion != -1 {
                     componentMap[image.Point{x, y}] = northEastRegion
                 }
                 if northRegion != -1 {
                     // Check the region of the current pixel
-                    currentRegion := checkRegion(x, y, im, componentMap)
+                    currentRegion := checkRegion(x, y, componentMap)
                     // Add an entry in the equivalence map between the northRegion and the current region
-                    equivalenceMap[currentRegion] = Min(equivalenceMap[currentRegion], northRegion)
-                    equivalenceMap[northRegion] = Min(equivalenceMap[northRegion], currentRegion)
+                    if currentRegion != -1 {
+                        updateEquivalenceMap(equivalenceMap, currentRegion, northRegion)
+                    }
                     componentMap[image.Point{x, y}] = northRegion
                 }
                 if northWestRegion != -1 {
                     // Check the region of the current pixel
-                    currentRegion := checkRegion(x, y, im, componentMap)
-                    // Add an entry in the equivalence map between the northRegion and the current region
-                    equivalenceMap[currentRegion] = Min(equivalenceMap[currentRegion], northRegion)
-                    equivalenceMap[northRegion] = Min(equivalenceMap[northRegion], currentRegion)
+                    currentRegion := checkRegion(x, y, componentMap)
+                    // Add an entry in the equivalence map between the northWestRegion and the current region
+                    if currentRegion != -1 {
+                        updateEquivalenceMap(equivalenceMap, currentRegion, northWestRegion)
+                    }
                     componentMap[image.Point{x, y}] = northWestRegion
 
                 }
                 if westRegion != -1 {
                     // Check the region of the current pixel
-                    currentRegion := checkRegion(x, y, im, componentMap)
-                    // Add an entry in the equivalence map between the northRegion and the current region
-                    equivalenceMap[currentRegion] = Min(equivalenceMap[currentRegion], northRegion)
-                    equivalenceMap[northRegion] = Min(equivalenceMap[northRegion], currentRegion)
+                    currentRegion := checkRegion(x, y, componentMap)
+                    // Add an entry in the equivalence map between the westRegion and the current region
+                    if currentRegion != -1 {
+                        updateEquivalenceMap(equivalenceMap, currentRegion, westRegion)
+                    }
                     componentMap[image.Point{x, y}] = westRegion
                 }
                 // If none of these have set the current region
-                if checkRegion(x, y, im, componentMap) == 0 {
+                if checkRegion(x, y, componentMap) == -1 {
                     // Set the region to a new region
                     componentMap[image.Point{x, y}] = regionCounter
                     // Increment the region counter
@@ -219,12 +275,16 @@ func findConnectedComponents(im image.Image) map[image.Point]int {
     }
 
     // Now we perform a final pass to merge equivalent components
-    for x := 0; x < im.Bounds().Max.X; x++ {
-        for y := 0; y < im.Bounds().Max.Y; y++ {
+    for y := 0; y < im.Bounds().Max.Y; y++ {
+        for x := 0; x < im.Bounds().Max.X; x++ {
             region := componentMap[image.Point{x, y}]
             if region != -1 {
                 // This should give us the lowest equivalent region
-                region = equivalenceMap[region]
+                newRegion := equivalenceMap[region]
+                for ;newRegion != region; {
+                    region = newRegion
+                    newRegion = equivalenceMap[region]
+                }
                 // Put it back into the component map
                 componentMap[image.Point{x, y}] = region
             }
@@ -239,19 +299,99 @@ func Min(x, y int) int {
     return int(math.Min(float64(x), float64(y)))
 }
 
-func checkRegion(x, y int, im image.Image, componentMap map[image.Point]int) int {
-    // Check to see if the pixel is in bounds
-    var region int
-    bounds := im.Bounds()
-    if x < 0 || y < 0 || x >= bounds.Max.X || y >= bounds.Max.Y {
+func checkRegion(x, y int, componentMap map[image.Point]int) int {
+    // If the pixel hasn't been labelled, we want to return -1
+    region, ok := componentMap[image.Point{x, y}]
+    if !ok {
         region = -1
-    } else {
-        region = componentMap[image.Point{x, y}]
     }
     return region
 }
 
 func divideFromComponentMap(nonEdgeMappedSegments []PixelSegment, pointComponentMap map[image.Point]int) []PixelSegment {
     var returnSlice []PixelSegment
+    // Iterate over the segments
+    for _, segment := range nonEdgeMappedSegments {
+        // Set the current region to something that should never be in the component map
+        currentRegion := -2
+        // Iterate over the points in the segment
+        for _, point := range segment {
+            // variable to hold the segment we're writing to
+            currentSegment := PixelSegment{}
+            // Look up the point in the component map
+            region := pointComponentMap[point]
+            // If the regions do not match, but we didn't hit edge pixels
+            if currentRegion != region && region != -1 {
+                // Add the old Segment to the returnSlice if it's not empty
+                if len(currentSegment) != 0 {
+                    returnSlice = append(returnSlice, currentSegment)
+                }
+                // Make a new PixelSegment to start adding points to it
+                currentSegment = PixelSegment{}
+            }
+            // Add the point to the currentSegment
+            currentSegment = append(currentSegment, point)
+            // Set the current region to the new region
+            currentRegion = region
+        }
+    }
     return returnSlice
+}
+
+type lessFunc func(p1, p2 *image.Point) bool
+
+// multiSorter implements the Sort interface, sorting the changes within.
+type multiSorter struct {
+	segment PixelSegment
+	less    []lessFunc
+}
+
+// Sort sorts the argument slice according to the less functions passed to OrderedBy.
+func (ms *multiSorter) Sort(segment PixelSegment) {
+	ms.segment = segment
+	sort.Sort(ms)
+}
+
+// OrderedBy returns a Sorter that sorts using the less functions, in order.
+// Call its Sort method to sort the data.
+func OrderedBy(less ...lessFunc) *multiSorter {
+	return &multiSorter{
+		less: less,
+	}
+}
+
+// Len is part of sort.Interface.
+func (ms *multiSorter) Len() int {
+	return len(ms.segment)
+}
+
+// Swap is part of sort.Interface.
+func (ms *multiSorter) Swap(i, j int) {
+	ms.segment[i], ms.segment[j] = ms.segment[j], ms.segment[i]
+}
+
+// Less is part of sort.Interface. It is implemented by looping along the
+// less functions until it finds a comparison that is either Less or
+// !Less. Note that it can call the less functions twice per call. We
+// could change the functions to return -1, 0, 1 and reduce the
+// number of calls for greater efficiency: an exercise for the reader.
+func (ms *multiSorter) Less(i, j int) bool {
+	p, q := &ms.segment[i], &ms.segment[j]
+	// Try all but the last comparison.
+	var k int
+	for k = 0; k < len(ms.less)-1; k++ {
+		less := ms.less[k]
+		switch {
+		case less(p, q):
+			// p < q, so we have a decision.
+			return true
+		case less(q, p):
+			// p > q, so we have a decision.
+			return false
+		}
+		// p == q; try the next comparison.
+	}
+	// All comparisons to here said "equal", so just return whatever
+	// the final comparison reports.
+	return ms.less[k](p, q)
 }
