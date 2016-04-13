@@ -10,6 +10,7 @@ type colorSortFunction func(*color.Color) int
 
 type pixelSortFilter struct {
     angle float64
+    edgeContrast float32
     sortFunction colorSortFunction
     edgeMapped bool
 }
@@ -30,7 +31,7 @@ func (p *pixelSortFilter) Draw(dst draw.Image, src image.Image, options *gift.Op
     // Call a different function for our segments depending on whether we are edge mapped or not
     var pixelSegments []PixelSegment
     if p.edgeMapped {
-        pixelSegments = createSegmentsWithEdgeMap(src, p.angle)
+        pixelSegments = createSegmentsWithEdgeMap(src, p.angle, p.edgeContrast)
     } else {
         pixelSegments = createSegments(src, p.angle)
     }
@@ -53,11 +54,12 @@ func (p *pixelSortFilter) Draw(dst draw.Image, src image.Image, options *gift.Op
 
 // This function takes an angle in degrees and a sort function which can sort RGBA values and returns a Filter which
 // can be used to apply the pixel sorting operation on an image
-func PixelSort(angle float64, sortFunction colorSortFunction, edgeMapped bool) gift.Filter{
+func PixelSort(angle float64, sortFunction colorSortFunction, edgeMapped bool, edgeContrast float32) gift.Filter{
     return &pixelSortFilter{
         angle: angle,
         sortFunction: sortFunction,
         edgeMapped: edgeMapped,
+        edgeContrast: edgeContrast,
     }
 }
 

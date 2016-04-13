@@ -88,7 +88,7 @@ func createSegments(sourceImage image.Image, segmentAngle float64) []PixelSegmen
 }
 
 
-func createSegmentsWithEdgeMap(sourceImage image.Image, segmentAngle float64) []PixelSegment {
+func createSegmentsWithEdgeMap(sourceImage image.Image, segmentAngle float64, contrast float32) []PixelSegment {
     var returnSlice []PixelSegment
 
     // Call the regular function that creates segments with no edge map
@@ -136,7 +136,7 @@ func createSegmentsWithEdgeMap(sourceImage image.Image, segmentAngle float64) []
         gift.Grayscale(),
         gift.Convolution(convolutionKernel,
                          false, false, false, 0.0),
-        gift.Contrast(50),
+        gift.Contrast(contrast),
     )
 
     // Create a new empty image to hold the filtered image
