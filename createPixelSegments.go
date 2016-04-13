@@ -88,7 +88,7 @@ func createSegments(sourceImage image.Image, segmentAngle float64) []PixelSegmen
 }
 
 
-func createSegmentsWithEdgeMap(sourceImage, edgeMap image.Image, segmentAngle float64) []PixelSegment {
+func createSegmentsWithEdgeMap(sourceImage image.Image, segmentAngle float64) []PixelSegment {
     var returnSlice []PixelSegment
 
     // Call the regular function that creates segments with no edge map
@@ -144,12 +144,8 @@ func createSegmentsWithEdgeMap(sourceImage, edgeMap image.Image, segmentAngle fl
 
     g.Draw(edgeImage, sourceImage)
 
-    // Now we need to use this edgeImage to split up our nonEdgeMappedSegments
-    // First we convert this image into a map from points to connected components
-    pointComponentMap := findConnectedComponents(edgeImage)
-
     // Next we use these to divide the nonEdgeMappedSegments
-    returnSlice = divideFromComponentMap(nonEdgeMappedSegments, pointComponentMap)
+    returnSlice = divideFromComponentMap(nonEdgeMappedSegments, edgeImage)
 
     return returnSlice
 }
@@ -190,149 +186,33 @@ func wrapValue(value, lower, upper float64) float64 {
     return value
 }
 
-func updateEquivalenceMap(eqMap map[int]int, region1, region2 int) {
-    // Retrieve the current value from the map
-    current1, ok := eqMap[region1]
-    // If there currently is a value
-    if ok {
-        // The new value is the minimum of the old and the region 2 value
-        eqMap[region1] = Min(current1, region2)
-    } else {
-        // Otherwise, the new value is just the region 2 value
-        eqMap[region1] = region2
-    }
-
-    // Do the same for the other region
-    current2, ok := eqMap[region2]
-    if ok {
-        eqMap[region2] = Min(current2, region1)
-    } else {
-        eqMap[region2] = region1
-    }
-}
-
-// This function produces a map from points to integers, where the integers represent contiguous regions of the image
-// The 'edges' or 'background' of the image are marked as -1 region
-func findConnectedComponents(im image.Image) map[image.Point]int {
-    componentMap := make(map[image.Point]int)
-    // Count the regions
-    regionCounter := 1
-    // Need to record which regions are equivalent. Mark this in a map from regions to slices of equivalent regions
-    equivalenceMap := make(map[int]int)
-    // To find connected components, we iterate over the image, pixel by pixel
-    for y := 0; y < im.Bounds().Max.Y; y++ {
-        for x := 0; x < im.Bounds().Max.X; x++ {
-            // Check to see if the pixel is black
-            R, G, B, _ := im.At(x, y).RGBA()
-            if R + G + B == 0 {
-                northEastRegion := checkRegion(x + 1, y - 1, componentMap)
-                northRegion := checkRegion(x, y - 1, componentMap)
-                northWestRegion := checkRegion(x - 1, y - 1, componentMap)
-                westRegion := checkRegion(x - 1, y, componentMap)
-                if northEastRegion != -1 {
-                    componentMap[image.Point{x, y}] = northEastRegion
-                }
-                if northRegion != -1 {
-                    // Check the region of the current pixel
-                    currentRegion := checkRegion(x, y, componentMap)
-                    // Add an entry in the equivalence map between the northRegion and the current region
-                    if currentRegion != -1 {
-                        updateEquivalenceMap(equivalenceMap, currentRegion, northRegion)
-                    }
-                    componentMap[image.Point{x, y}] = northRegion
-                }
-                if northWestRegion != -1 {
-                    // Check the region of the current pixel
-                    currentRegion := checkRegion(x, y, componentMap)
-                    // Add an entry in the equivalence map between the northWestRegion and the current region
-                    if currentRegion != -1 {
-                        updateEquivalenceMap(equivalenceMap, currentRegion, northWestRegion)
-                    }
-                    componentMap[image.Point{x, y}] = northWestRegion
-
-                }
-                if westRegion != -1 {
-                    // Check the region of the current pixel
-                    currentRegion := checkRegion(x, y, componentMap)
-                    // Add an entry in the equivalence map between the westRegion and the current region
-                    if currentRegion != -1 {
-                        updateEquivalenceMap(equivalenceMap, currentRegion, westRegion)
-                    }
-                    componentMap[image.Point{x, y}] = westRegion
-                }
-                // If none of these have set the current region
-                if checkRegion(x, y, componentMap) == -1 {
-                    // Set the region to a new region
-                    componentMap[image.Point{x, y}] = regionCounter
-                    // Increment the region counter
-                    regionCounter++
-                }
-            } else {
-                // Mark the region is background with a -1
-                componentMap[image.Point{x,y}] = -1
-            }
-        }
-    }
-
-    // Now we perform a final pass to merge equivalent components
-    for y := 0; y < im.Bounds().Max.Y; y++ {
-        for x := 0; x < im.Bounds().Max.X; x++ {
-            region := componentMap[image.Point{x, y}]
-            if region != -1 {
-                // This should give us the lowest equivalent region
-                newRegion := equivalenceMap[region]
-                for ;newRegion != region; {
-                    region = newRegion
-                    newRegion = equivalenceMap[region]
-                }
-                // Put it back into the component map
-                componentMap[image.Point{x, y}] = region
-            }
-        }
-    }
-
-    return componentMap
-}
-
-// Convenience function that takes ints, passes them as floats to math.Min, then returns the resulting int
-func Min(x, y int) int {
-    return int(math.Min(float64(x), float64(y)))
-}
-
-func checkRegion(x, y int, componentMap map[image.Point]int) int {
-    // If the pixel hasn't been labelled, we want to return -1
-    region, ok := componentMap[image.Point{x, y}]
-    if !ok {
-        region = -1
-    }
-    return region
-}
-
-func divideFromComponentMap(nonEdgeMappedSegments []PixelSegment, pointComponentMap map[image.Point]int) []PixelSegment {
+func divideFromComponentMap(nonEdgeMappedSegments []PixelSegment, edgeImage image.Image) []PixelSegment {
     var returnSlice []PixelSegment
     // Iterate over the segments
     for _, segment := range nonEdgeMappedSegments {
-        // Set the current region to something that should never be in the component map
-        currentRegion := -2
+        // The current segment we're populating
+        currentSegment := PixelSegment{}
+        // The state of the iteration over the segment
+        inEdge := false
         // Iterate over the points in the segment
         for _, point := range segment {
-            // variable to hold the segment we're writing to
-            currentSegment := PixelSegment{}
-            // Look up the point in the component map
-            region := pointComponentMap[point]
-            // If the regions do not match, but we didn't hit edge pixels
-            if currentRegion != region && region != -1 {
-                // Add the old Segment to the returnSlice if it's not empty
-                if len(currentSegment) != 0 {
-                    returnSlice = append(returnSlice, currentSegment)
-                }
-                // Make a new PixelSegment to start adding points to it
+            // Look up the point in the edge image
+            edgeColor := edgeImage.At(point.X, point.Y)
+            R, G, B, _ := edgeColor.RGBA()
+            colorSum := R + G + B
+            if colorSum == 0 && inEdge {
+                // Reset inEdge to false, because we've passed the edge
+                inEdge = false
+                // Append the segment to the returnSlice
+                returnSlice = append(returnSlice, currentSegment)
+                // Start a new segment
                 currentSegment = PixelSegment{}
+            } else if colorSum != 0 {
+                // We're in an edge
+                inEdge = true
             }
-            // Add the point to the currentSegment
+            // Either way, add the current point to the currrent segment
             currentSegment = append(currentSegment, point)
-            // Set the current region to the new region
-            currentRegion = region
         }
     }
     return returnSlice
