@@ -136,7 +136,7 @@ func createSegmentsWithEdgeMap(sourceImage image.Image, segmentAngle float64) []
         gift.Grayscale(),
         gift.Convolution(convolutionKernel,
                          false, false, false, 0.0),
-        gift.Contrast(100),
+        gift.Contrast(50),
     )
 
     // Create a new empty image to hold the filtered image
@@ -192,28 +192,20 @@ func divideFromComponentMap(nonEdgeMappedSegments []PixelSegment, edgeImage imag
     for _, segment := range nonEdgeMappedSegments {
         // The current segment we're populating
         currentSegment := PixelSegment{}
-        // The state of the iteration over the segment
-        inEdge := false
         // Iterate over the points in the segment
         for _, point := range segment {
             // Look up the point in the edge image
             edgeColor := edgeImage.At(point.X, point.Y)
             R, G, B, _ := edgeColor.RGBA()
             colorSum := R + G + B
-            if colorSum == 0 && inEdge {
-                // Reset inEdge to false, because we've passed the edge
-                inEdge = false
-                // Append the segment to the returnSlice
+            if colorSum != 0 {
                 returnSlice = append(returnSlice, currentSegment)
-                // Start a new segment
+                // Start a new pixel segment
                 currentSegment = PixelSegment{}
-            } else if colorSum != 0 {
-                // We're in an edge
-                inEdge = true
             }
-            // Either way, add the current point to the currrent segment
             currentSegment = append(currentSegment, point)
         }
+        returnSlice = append(returnSlice, currentSegment)
     }
     return returnSlice
 }
