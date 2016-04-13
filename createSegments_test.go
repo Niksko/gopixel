@@ -45,16 +45,3 @@ func Test4x4(t *testing.T) {
         }
     }
 }
-
-var connectedComponentTests = []string {"test/edge.png", "test/edge2.png"}
-
-func TestEdgeDetection(t *testing.T) {
-    for _, filename := range connectedComponentTests {
-        file, _ := os.Open(filename)
-        defer file.Close()
-        edgeImage, _, _ := image.Decode(bufio.NewReader(file))
-        fmt.Printf("%+v\n", edgeImage)
-        componentMap := findConnectedComponents(edgeImage)
-        fmt.Printf("%+v\n", componentMap)
-    }
-}
