@@ -1,6 +1,7 @@
 package sort
 
 import (
+	"fmt"
 	"image"
 	"os"
 	"testing"
@@ -33,32 +34,34 @@ func compareImages(img1, img2 image.Image) bool {
 	return true
 }
 
-func TestSort(t *testing.T) {
-	reader, err := os.Open("data/single-row.png")
+func loadImage(path string) (image.Image, error) {
+	reader, err := os.Open(path)
 	if err != nil {
-		t.Errorf("Failed to load test image")
+		return nil, fmt.Errorf("Failed to load image at path %s", path)
 	}
 	defer reader.Close()
 
 	var img image.Image
 	img, _, err = image.Decode(reader)
 	if err != nil {
-		t.Errorf("Failed to decode image with error: %s", err)
+		return nil, fmt.Errorf("Failed to decode image at path %s with error: %s", path, err)
+	}
+
+	return img, nil
+}
+
+func TestSort(t *testing.T) {
+	img, err := loadImage("data/single-row.png")
+	if err != nil {
+		t.Fatalf("Failed to load input image: %s", err)
 	}
 
 	sortedImage := sort(img)
 
-	var expectedReader *os.File
-	expectedReader, err = os.Open("data/single-row-sorted.png")
-	if err != nil {
-		t.Errorf("Failed to load result image")
-	}
-	defer expectedReader.Close()
-
 	var expectedImage image.Image
-	expectedImage, _, err = image.Decode(expectedReader)
+	expectedImage, err = loadImage("data/single-row-sorted.png")
 	if err != nil {
-		t.Errorf("Failed to decode result image with error: %s", err)
+		t.Fatalf("Failed to load expected image: %s", err)
 	}
 
 	if !compareImages(sortedImage, expectedImage) {
