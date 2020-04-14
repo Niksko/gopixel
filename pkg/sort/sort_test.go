@@ -55,6 +55,7 @@ func TestSort(t *testing.T) {
 	testCases := []string{
 		"data/single-row.png",
 		"data/greyscale-single-line.png",
+		"data/color-single-line.png",
 	}
 	for _, inputPath := range testCases {
 		img, err := loadImage(inputPath)
