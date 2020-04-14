@@ -1,7 +1,7 @@
 package sort
 
-// import "image"
+import "image"
 
-func sort() {
-
+func sort(img image.Image) image.Image {
+	return img
 }
