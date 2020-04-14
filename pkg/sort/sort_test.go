@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"os"
+	path "path/filepath"
 	"testing"
 
 	_ "image/png"
@@ -51,20 +52,27 @@ func loadImage(path string) (image.Image, error) {
 }
 
 func TestSort(t *testing.T) {
-	img, err := loadImage("data/single-row.png")
-	if err != nil {
-		t.Fatalf("Failed to load input image: %s", err)
+	testCases := []string{
+		"data/single-row.png",
 	}
+	for _, inputPath := range testCases {
+		img, err := loadImage(inputPath)
+		if err != nil {
+			t.Fatalf("Failed to load input image: %s", err)
+		}
 
-	sortedImage := sort(img)
+		sortedImage := sort(img)
 
-	var expectedImage image.Image
-	expectedImage, err = loadImage("data/single-row-sorted.png")
-	if err != nil {
-		t.Fatalf("Failed to load expected image: %s", err)
-	}
+		baseFileName := inputPath[:len(inputPath)-len(path.Ext(inputPath))]
+		expectedImageFilename := baseFileName + "-sorted" + path.Ext(inputPath)
+		var expectedImage image.Image
+		expectedImage, err = loadImage(expectedImageFilename)
+		if err != nil {
+			t.Fatalf("Failed to load expected image: %s", err)
+		}
 
-	if !compareImages(sortedImage, expectedImage) {
-		t.Errorf("Image didn't match expected image\nExpected: %v+\nGot     : %v+", expectedImage, sortedImage)
+		if !compareImages(sortedImage, expectedImage) {
+			t.Errorf("Image didn't match expected image\nExpected: %v+\nGot     : %v+", expectedImage, sortedImage)
+		}
 	}
 }
