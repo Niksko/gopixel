@@ -32,15 +32,20 @@ func sort(inputImage image.Image) image.Image {
 	sortedImage := image.NewRGBA(imageRectangle)
 
 	// Sort image, brightest pixels on the left
-	pixels := make([]color.Color, bounds.Dx())
-	for i := bounds.Min.X; i < bounds.Max.X; i++ {
-		pixels[i] = inputImage.At(i, bounds.Min.Y)
+	pixels := make([][]color.Color, bounds.Dy())
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		pixelRow := make([]color.Color, bounds.Dx())
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			pixelRow[x] = inputImage.At(x, y)
+		}
+		s.Sort(ByBrightness(pixelRow))
+		pixels[y] = pixelRow
 	}
 
-	s.Sort(ByBrightness(pixels))
-
-	for i := bounds.Min.X; i < bounds.Max.X; i++ {
-		sortedImage.Set(i, bounds.Min.Y, pixels[i])
+	for x := bounds.Min.X; x < bounds.Max.X; x++ {
+		for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+			sortedImage.Set(x, y, pixels[y][x])
+		}
 	}
 
 	return sortedImage
