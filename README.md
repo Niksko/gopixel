@@ -7,7 +7,7 @@ A library and CLI tool for [pixel sorting](https://www.google.com/search?q=pixel
 1. Clone this repo
 1. `cd cmd/gopixel`
 1. `go build`
-1. `./gopixel <input-file> > <output-file>`
+1. `./gopixel <input-file> [sort-angle] > <output-file>`
 
 GoPixel can read files in PNG format, and writes PNG formatted files to stdout.
 
@@ -36,7 +36,7 @@ func main() {
         log.Fatal(err)
     }
 
-    sortedImage, err := gopixel.Sort(img)
+    sortedImage, err := gopixel.Sort(img, 270)
     if err != nil {
         log.Fatal(err)
     }

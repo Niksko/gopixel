@@ -8,14 +8,14 @@ import (
 	"os"
 )
 
-func Sort(filename string) (bool, error) {
+func Sort(filename string, sortAngle uint) (bool, error) {
 	image, err := LoadImage(filename)
 	if err != nil {
 		log.Errorf("Error loading input file: %s", err)
 		return false, err
 	}
 
-	sorted := gopixel.Sort(image)
+	sorted := gopixel.Sort(image, sortAngle)
 
 	err = png.Encode(os.Stdout, sorted)
 	if err != nil {
