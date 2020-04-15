@@ -25,7 +25,7 @@ func (c ByBrightness) Less(i, j int) bool {
 	return brightness(c[i]) > brightness(c[j])
 }
 
-func sort(inputImage image.Image) image.Image {
+func Sort(inputImage image.Image) image.Image {
 	// Set up sorted image bounds
 	bounds := inputImage.Bounds()
 	imageRectangle := image.Rect(bounds.Min.X, bounds.Min.Y, bounds.Max.X, bounds.Max.Y)

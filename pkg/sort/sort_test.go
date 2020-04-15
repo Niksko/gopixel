@@ -47,7 +47,7 @@ func TestSort(t *testing.T) {
 			t.Fatalf("Failed to load input image: %s", err)
 		}
 
-		sortedImage := sort(img)
+		sortedImage := Sort(img)
 
 		baseFileName := inputPath[:len(inputPath)-len(path.Ext(inputPath))]
 		expectedImageFilename := baseFileName + "-sorted" + path.Ext(inputPath)
