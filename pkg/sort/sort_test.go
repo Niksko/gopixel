@@ -1,9 +1,8 @@
 package sort
 
 import (
-	"fmt"
+	. "github.com/niksko/gopixel/internal"
 	"image"
-	"os"
 	path "path/filepath"
 	"testing"
 
@@ -35,22 +34,6 @@ func compareImages(img1, img2 image.Image) bool {
 	return true
 }
 
-func loadImage(path string) (image.Image, error) {
-	reader, err := os.Open(path)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to load image at path %s", path)
-	}
-	defer reader.Close()
-
-	var img image.Image
-	img, _, err = image.Decode(reader)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to decode image at path %s with error: %s", path, err)
-	}
-
-	return img, nil
-}
-
 func TestSort(t *testing.T) {
 	testCases := []string{
 		"data/single-row.png",
@@ -59,7 +42,7 @@ func TestSort(t *testing.T) {
 		"data/multi-line.png",
 	}
 	for _, inputPath := range testCases {
-		img, err := loadImage(inputPath)
+		img, err := LoadImage(inputPath)
 		if err != nil {
 			t.Fatalf("Failed to load input image: %s", err)
 		}
@@ -69,7 +52,7 @@ func TestSort(t *testing.T) {
 		baseFileName := inputPath[:len(inputPath)-len(path.Ext(inputPath))]
 		expectedImageFilename := baseFileName + "-sorted" + path.Ext(inputPath)
 		var expectedImage image.Image
-		expectedImage, err = loadImage(expectedImageFilename)
+		expectedImage, err = LoadImage(expectedImageFilename)
 		if err != nil {
 			t.Fatalf("Failed to load expected image: %s", err)
 		}
