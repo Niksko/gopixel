@@ -35,20 +35,24 @@ func compareImages(img1, img2 image.Image) bool {
 }
 
 func TestSort(t *testing.T) {
-	testCases := []string{
-		"data/single-row.png",
-		"data/greyscale-single-line.png",
-		"data/color-single-line.png",
-		"data/multi-line.png",
-		"data/multi-line-vertical.png",
+	testCases := []struct {
+		inputPath string
+		sortAngle uint
+	}{
+		{"data/single-row.png", 270},
+		{"data/greyscale-single-line.png", 270},
+		{"data/color-single-line.png", 270},
+		{"data/multi-line.png", 270},
+		{"data/multi-line-vertical.png", 0},
 	}
-	for _, inputPath := range testCases {
+	for _, testCase := range testCases {
+		inputPath := testCase.inputPath
 		img, err := LoadImage(inputPath)
 		if err != nil {
 			t.Fatalf("Failed to load input image: %s", err)
 		}
 
-		sortedImage := Sort(img)
+		sortedImage := Sort(img, testCase.sortAngle)
 
 		baseFileName := inputPath[:len(inputPath)-len(path.Ext(inputPath))]
 		expectedImageFilename := baseFileName + "-sorted" + path.Ext(inputPath)
