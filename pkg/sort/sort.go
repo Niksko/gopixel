@@ -29,6 +29,21 @@ func (c ByBrightness) Less(i, j int) bool {
 func generatePointOrder(bounds image.Rectangle, sortAngle uint) [][]image.Point {
 	var pointOrder [][]image.Point
 	clippedSortAngle := sortAngle % 360
+	if clippedSortAngle == 0 || clippedSortAngle == 180 {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			var pointSegment []image.Point
+			if clippedSortAngle == 0 {
+				for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+					pointSegment = append(pointSegment, image.Pt(x, y))
+				}
+			} else {
+				for y := bounds.Max.Y - 1; y >= bounds.Min.Y; y-- {
+					pointSegment = append(pointSegment, image.Pt(x, y))
+				}
+			}
+			pointOrder = append(pointOrder, pointSegment)
+		}
+	}
 	if clippedSortAngle >= 270 {
 		x0 := bounds.Min.X
 		x1 := bounds.Max.X
@@ -38,7 +53,7 @@ func generatePointOrder(bounds image.Rectangle, sortAngle uint) [][]image.Point 
 
 		y0 := int(Round(float64(y1) - (float64(deltaX) * Tan(theta))))
 
-		pointLine := bresenham(x0, y0, x1, y1)
+		pointLine := bresenhamLine(x0, y0, x1, y1)
 
 		for offset := 0; offset < bounds.Max.Y-bounds.Min.Y; offset++ {
 			var pointSegment []image.Point
@@ -53,37 +68,6 @@ func generatePointOrder(bounds image.Rectangle, sortAngle uint) [][]image.Point 
 	}
 
 	return pointOrder
-}
-
-func sgn(a float64) int {
-	switch {
-	case a < 0:
-		return -1
-	case a > 0:
-		return +1
-	}
-	return 0
-}
-
-// Naive implementation of Bresenham's line algorithm
-func bresenham(x0, y0, x1, y1 int) []image.Point {
-	result := make([]image.Point, 0)
-
-	deltaX := x1 - x0
-	deltaY := y1 - y0
-	deltaErr := Abs(float64(deltaY) / float64(deltaX))
-	err := 0.0
-	y := y0
-
-	for x := x0; x < x1; x++ {
-		result = append(result, image.Pt(x, y))
-		err = err + deltaErr
-		if err >= 0.5 {
-			y = y + sgn(float64(deltaY))
-			err = err - 1.0
-		}
-	}
-	return result
 }
 
 func generateColorSegments(pointOrder [][]image.Point, img image.Image) [][]color.Color {
