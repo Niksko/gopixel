@@ -65,10 +65,12 @@ func TestGeneratePointOrder(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		result := generatePointOrder(testCase.bounds, testCase.sortAngle)
-		if !comparePointOrders(result, testCase.expectedPointOrder) {
-			t.Fatalf("Test case didn't match.\nGot:      %v\nExpected: %v\n", result, testCase.expectedPointOrder)
-		}
+		t.Run(string(testCase.sortAngle), func(t *testing.T) {
+			result := generatePointOrder(testCase.bounds, testCase.sortAngle)
+			if !comparePointOrders(result, testCase.expectedPointOrder) {
+				t.Fatalf("Test case didn't match.\nGot:      %v\nExpected: %v\n", result, testCase.expectedPointOrder)
+			}
+		})
 	}
 }
 
@@ -85,23 +87,25 @@ func TestSort(t *testing.T) {
 	}
 	for _, testCase := range testCases {
 		inputPath := testCase.inputPath
-		img, err := LoadImage(inputPath)
-		if err != nil {
-			t.Fatalf("Failed to load input image: %s", err)
-		}
+		t.Run(inputPath, func(t *testing.T) {
+			img, err := LoadImage(inputPath)
+			if err != nil {
+				t.Fatalf("Failed to load input image: %s", err)
+			}
 
-		sortedImage := Sort(img, testCase.sortAngle)
+			sortedImage := Sort(img, testCase.sortAngle)
 
-		baseFileName := inputPath[:len(inputPath)-len(path.Ext(inputPath))]
-		expectedImageFilename := baseFileName + "-sorted" + path.Ext(inputPath)
-		var expectedImage image.Image
-		expectedImage, err = LoadImage(expectedImageFilename)
-		if err != nil {
-			t.Fatalf("Failed to load expected image: %s", err)
-		}
+			baseFileName := inputPath[:len(inputPath)-len(path.Ext(inputPath))]
+			expectedImageFilename := baseFileName + "-sorted" + path.Ext(inputPath)
+			var expectedImage image.Image
+			expectedImage, err = LoadImage(expectedImageFilename)
+			if err != nil {
+				t.Fatalf("Failed to load expected image: %s", err)
+			}
 
-		if !compareImages(sortedImage, expectedImage) {
-			t.Errorf("Image didn't match expected image\nExpected: %v+\nGot     : %v+", expectedImage, sortedImage)
-		}
+			if !compareImages(sortedImage, expectedImage) {
+				t.Errorf("Image didn't match expected image\nExpected: %v+\nGot     : %v+", expectedImage, sortedImage)
+			}
+		})
 	}
 }

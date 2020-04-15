@@ -37,7 +37,28 @@ func generatePointOrder(bounds image.Rectangle, sortAngle uint) [][]image.Point 
 			pointOrder[y] = pointSegment
 		}
 	}
+	if sortAngle == 0 {
+		pointOrder = make([][]image.Point, bounds.Dx())
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			pointSegment := make([]image.Point, bounds.Dy())
+			for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+				pointSegment[y] = image.Pt(x, y)
+			}
+			pointOrder[x] = pointSegment
+		}
+	}
 	return pointOrder
+}
+
+func generateColorSegments(pointOrder [][]image.Point, img image.Image) [][]color.Color {
+	result := make([][]color.Color, len(pointOrder))
+	for i, points := range pointOrder {
+		result[i] = make([]color.Color, len(points))
+		for j, point := range points {
+			result[i][j] = img.At(point.X, point.Y)
+		}
+	}
+	return result
 }
 
 func Sort(inputImage image.Image, sortAngle uint) image.Image {
@@ -46,19 +67,16 @@ func Sort(inputImage image.Image, sortAngle uint) image.Image {
 	imageRectangle := image.Rect(bounds.Min.X, bounds.Min.Y, bounds.Max.X, bounds.Max.Y)
 	sortedImage := image.NewRGBA(imageRectangle)
 
-	pixels := make([][]color.Color, bounds.Dy())
-	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-		pixelRow := make([]color.Color, bounds.Dx())
-		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			pixelRow[x] = inputImage.At(x, y)
-		}
-		s.Sort(ByBrightness(pixelRow))
-		pixels[y] = pixelRow
+	pointOrder := generatePointOrder(inputImage.Bounds(), sortAngle)
+	colorSegments := generateColorSegments(pointOrder, inputImage)
+
+	for _, segment := range colorSegments {
+		s.Sort(ByBrightness(segment))
 	}
 
-	for x := bounds.Min.X; x < bounds.Max.X; x++ {
-		for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-			sortedImage.Set(x, y, pixels[y][x])
+	for i, points := range pointOrder {
+		for j, point := range points {
+			sortedImage.Set(point.X, point.Y, colorSegments[i][j])
 		}
 	}
 
