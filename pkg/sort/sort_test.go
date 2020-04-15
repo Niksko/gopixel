@@ -84,6 +84,7 @@ func TestSort(t *testing.T) {
 		{"data/color-single-line.png", 270},
 		{"data/multi-line.png", 270},
 		{"data/multi-line-vertical.png", 0},
+		{"data/multi-line-90-degrees.png", 90},
 	}
 	for _, testCase := range testCases {
 		inputPath := testCase.inputPath
