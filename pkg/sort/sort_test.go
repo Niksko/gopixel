@@ -40,6 +40,7 @@ func TestSort(t *testing.T) {
 		"data/greyscale-single-line.png",
 		"data/color-single-line.png",
 		"data/multi-line.png",
+		"data/multi-line-vertical.png",
 	}
 	for _, inputPath := range testCases {
 		img, err := LoadImage(inputPath)
