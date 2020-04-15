@@ -9,16 +9,25 @@ func abs(a int) float64 {
 	return Abs(float64(a))
 }
 
+func reverseLine(line []image.Point) []image.Point {
+	for i := len(line)/2 - 1; i >= 0; i-- {
+		opp := len(line) - 1 - i
+		line[i], line[opp] = line[opp], line[i]
+	}
+	return line
+}
+
 func bresenhamLine(x0, y0, x1, y1 int) []image.Point {
 	if abs(y1-y0) < abs(x1-x0) {
 		if x0 > x1 {
-			return bresenhamLineLowAngle(x1, y1, x0, y0)
+			return reverseLine(bresenhamLineLowAngle(x1, y1, x0, y0))
 		} else {
 			return bresenhamLineLowAngle(x0, y0, x1, y1)
 		}
+
 	} else {
 		if y0 > y1 {
-			return bresenhamLineHighAngle(x1, y1, x0, y0)
+			return reverseLine(bresenhamLineHighAngle(x1, y1, x0, y0))
 		} else {
 			return bresenhamLineHighAngle(x0, y0, x1, y1)
 		}

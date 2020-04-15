@@ -62,13 +62,36 @@ func TestGeneratePointOrder(t *testing.T) {
 				[]image.Point{image.Pt(0, 3), image.Pt(1, 3), image.Pt(2, 3), image.Pt(3, 3)},
 			},
 		},
+		{
+			image.Rect(0, 0, 4, 4),
+			90,
+			[][]image.Point{
+				[]image.Point{image.Pt(3, 0), image.Pt(2, 0), image.Pt(1, 0), image.Pt(0, 0)},
+				[]image.Point{image.Pt(3, 1), image.Pt(2, 1), image.Pt(1, 1), image.Pt(0, 1)},
+				[]image.Point{image.Pt(3, 2), image.Pt(2, 2), image.Pt(1, 2), image.Pt(0, 2)},
+				[]image.Point{image.Pt(3, 3), image.Pt(2, 3), image.Pt(1, 3), image.Pt(0, 3)},
+			},
+		},
+		{
+			image.Rect(0, 0, 4, 4),
+			45,
+			[][]image.Point{
+				[]image.Point{image.Pt(0, 0)},
+				[]image.Point{image.Pt(1, 0), image.Pt(0, 1)},
+				[]image.Point{image.Pt(2, 0), image.Pt(1, 1), image.Pt(0, 2)},
+				[]image.Point{image.Pt(3, 0), image.Pt(2, 1), image.Pt(1, 2), image.Pt(0, 3)},
+				[]image.Point{image.Pt(3, 1), image.Pt(2, 2), image.Pt(1, 3)},
+				[]image.Point{image.Pt(3, 2), image.Pt(2, 3)},
+				[]image.Point{image.Pt(3, 3)},
+			},
+		},
 	}
 
 	for _, testCase := range testCases {
 		t.Run(string(testCase.sortAngle), func(t *testing.T) {
 			result := generatePointOrder(testCase.bounds, testCase.sortAngle)
 			if !comparePointOrders(result, testCase.expectedPointOrder) {
-				t.Fatalf("Test case didn't match.\nGot:      %v\nExpected: %v\n", result, testCase.expectedPointOrder)
+				t.Fatalf("Test case didn't match, angle %v.\nGot:      %v\nExpected: %v\n", testCase.sortAngle, result, testCase.expectedPointOrder)
 			}
 		})
 	}

@@ -43,19 +43,52 @@ func generatePointOrder(bounds image.Rectangle, sortAngle uint) [][]image.Point 
 			}
 			pointOrder = append(pointOrder, pointSegment)
 		}
-	}
-	if clippedSortAngle >= 270 {
-		x0 := bounds.Min.X
-		x1 := bounds.Max.X
-		y1 := bounds.Min.Y
-		deltaX := x1 - x0
-		theta := float64(clippedSortAngle-270) / 180.0 * Pi
+	} else {
+		var x0, x1, y0, y1 int
+		if clippedSortAngle < 90 {
+			x0 = bounds.Max.X - 1
+			x1 = bounds.Min.X - 1
+			y1 = bounds.Min.Y
+			deltaX := x0 - x1
+			theta := float64(90-clippedSortAngle) / 180.0 * Pi
 
-		y0 := int(Round(float64(y1) - (float64(deltaX) * Tan(theta))))
+			y0 = int(Round(float64(y1) - (float64(deltaX) * Tan(theta))))
+		} else if clippedSortAngle == 90 {
+			x0 = bounds.Max.X
+			x1 = bounds.Min.X
+			y1 = bounds.Min.Y - 1
+			y0 = bounds.Min.Y - 1
+		} else if clippedSortAngle < 180 {
+			x0 = bounds.Max.X
+			y0 = bounds.Min.Y
+			x1 = bounds.Min.X
+			deltaX := x0 - x1
+			theta := float64(clippedSortAngle-90) / 180.0 * Pi
+
+			y1 = int(Round(float64(y0) - (float64(deltaX) * Tan(theta))))
+		} else if clippedSortAngle <= 270 {
+			x0 = bounds.Min.X
+			y0 = bounds.Min.Y
+			x1 = bounds.Max.X
+			deltaX := x1 - x0
+			theta := float64(270-clippedSortAngle) / 180.0 * Pi
+
+			y1 = int(Round(float64(y0) - (float64(deltaX) * Tan(theta))))
+		} else {
+			x0 = bounds.Min.X
+			x1 = bounds.Max.X
+			y1 = bounds.Min.Y
+			deltaX := x1 - x0
+			theta := float64(clippedSortAngle-270) / 180.0 * Pi
+
+			y0 = int(Round(float64(y1) - (float64(deltaX) * Tan(theta))))
+		}
 
 		pointLine := bresenhamLine(x0, y0, x1, y1)
 
-		for offset := 0; offset < bounds.Max.Y-bounds.Min.Y; offset++ {
+		offset := 0
+		nonEmptySegments := false
+		for {
 			var pointSegment []image.Point
 			for _, point := range pointLine {
 				offsetPoint := image.Pt(point.X, point.Y+offset)
@@ -63,7 +96,13 @@ func generatePointOrder(bounds image.Rectangle, sortAngle uint) [][]image.Point 
 					pointSegment = append(pointSegment, offsetPoint)
 				}
 			}
-			pointOrder = append(pointOrder, pointSegment)
+			if len(pointSegment) > 0 {
+				nonEmptySegments = true
+				pointOrder = append(pointOrder, pointSegment)
+			} else if nonEmptySegments {
+				break
+			}
+			offset++
 		}
 	}
 
