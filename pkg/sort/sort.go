@@ -3,6 +3,7 @@ package sort
 import (
 	"image"
 	"image/color"
+	. "math"
 	s "sort"
 )
 
@@ -27,27 +28,62 @@ func (c ByBrightness) Less(i, j int) bool {
 
 func generatePointOrder(bounds image.Rectangle, sortAngle uint) [][]image.Point {
 	var pointOrder [][]image.Point
-	if sortAngle == 270 {
-		pointOrder = make([][]image.Point, bounds.Dy())
-		for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-			pointSegment := make([]image.Point, bounds.Dx())
-			for x := bounds.Min.X; x < bounds.Max.X; x++ {
-				pointSegment[x] = image.Pt(x, y)
+	clippedSortAngle := sortAngle % 360
+	if clippedSortAngle >= 270 {
+		x0 := bounds.Min.X
+		x1 := bounds.Max.X
+		y1 := bounds.Min.Y
+		deltaX := x1 - x0
+		theta := float64(clippedSortAngle-270) / 180.0 * Pi
+
+		y0 := int(Round(float64(y1) - (float64(deltaX) * Tan(theta))))
+
+		pointLine := bresenham(x0, y0, x1, y1)
+
+		for offset := 0; offset < bounds.Max.Y-bounds.Min.Y; offset++ {
+			var pointSegment []image.Point
+			for _, point := range pointLine {
+				offsetPoint := image.Pt(point.X, point.Y+offset)
+				if offsetPoint.In(bounds) {
+					pointSegment = append(pointSegment, offsetPoint)
+				}
 			}
-			pointOrder[y] = pointSegment
+			pointOrder = append(pointOrder, pointSegment)
 		}
 	}
-	if sortAngle == 0 {
-		pointOrder = make([][]image.Point, bounds.Dx())
-		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			pointSegment := make([]image.Point, bounds.Dy())
-			for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-				pointSegment[y] = image.Pt(x, y)
-			}
-			pointOrder[x] = pointSegment
-		}
-	}
+
 	return pointOrder
+}
+
+func sgn(a float64) int {
+	switch {
+	case a < 0:
+		return -1
+	case a > 0:
+		return +1
+	}
+	return 0
+}
+
+// Naive implementation of Bresenham's line algorithm
+func bresenham(x0, y0, x1, y1 int) []image.Point {
+	result := make([]image.Point, 0)
+
+	deltaX := x1 - x0
+	deltaY := y1 - y0
+	deltaErr := Abs(float64(deltaY) / float64(deltaX))
+	err := 0.0
+	y := y0
+
+	for x := x0; x < x1; x++ {
+		result = append(result, image.Pt(x, y))
+		err = err + deltaErr
+		if err >= 0.5 {
+			y = y + sgn(float64(deltaY))
+			err = err - 1.0
+		}
+	}
+	return result
 }
 
 func generateColorSegments(pointOrder [][]image.Point, img image.Image) [][]color.Color {
